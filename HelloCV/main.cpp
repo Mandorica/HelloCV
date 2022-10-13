@@ -1,112 +1,53 @@
 #include "opencv2/opencv.hpp"
 #include <iostream>
 
-using namespace cv;
-using namespace std;
+// ROI가 될 영역의 점들을 roiPoints 로 선언
+vector<vector<int>> roiPoints({
+    vector<int>({ 240, 280 }),
+    vector<int>({400, 280}),
+    vector<int>({620, 440}),
+    vector<int>({20, 440})
+    });
 
-void brightness1();
-void brightness2();
-void brightness3();
-void brightness4();
-void on_brightness(int pos, void* userdata);
+VideoCapture cap("base_camera_dark.avi");
 
-int main(void)
-{
-	brightness1();
-	brightness2();
-	brightness3();
-	brightness4();
-
-	return 0;
+if (!cap.isOpened()) {
+    cerr << "Video open failed!" << endl;
+    return -1;
 }
 
-void brightness1()
-{
-	Mat src = imread("lenna.bmp", IMREAD_GRAYSCALE);
+Mat frame, gray;
+Mat mask(frame.rows, frame.cols, CV_8UC1, Scalar(0));
+Mat dst(frame.rows, frame.cols, CV_8UC1, Scalar(0));
 
-	if (src.empty()) {
-		cerr << "Image load failed!" << endl;
-		return;
-	}
+while (true) {
+    cap >> frame;
+    if (frame.empty()) break;
 
-	Mat dst = src + 100;
+    // grayscale 변환
+    cvtColor(frame, gray, COLOR_BGR2GRAY);
 
-	imshow("src", src);
-	imshow("dst", dst);
-	waitKey();
+    // 원본 영상에 ROI 범위를 line으로 그리기
+    line(frame, Point(240, 280), Point(400, 280), Scalar(0, 0, 255), 2);
+    line(frame, Point(400, 280), Point(620, 440), Scalar(0, 0, 255), 2);
+    line(frame, Point(620, 440), Point(20, 440), Scalar(0, 0, 255), 2);
+    line(frame, Point(20, 440), Point(240, 280), Scalar(0, 0, 255), 2);
 
-	destroyAllWindows();
+    // ROI 부분 mask 생성
+    fillPoly(mask, roiPoints, 255);
+
+    //평균 밝기 구해 적용하기
+    int m = mean(gray, mask)[0];
+    dst = gray + (128 - m);
+
+    //영상 보이기
+    imshow("frame", frame);
+    imshow("gray", gray);
+    imshow("dst", dst);
+
+    if (waitKey(10) == 27)
+        break;
 }
 
-void brightness2()
-{
-	Mat src = imread("lenna.bmp", IMREAD_GRAYSCALE);
-
-	if (src.empty()) {
-		cerr << "Image load failed!" << endl;
-		return;
-	}
-
-	Mat dst(src.rows, src.cols, src.type());
-
-	for (int j = 0; j < src.rows; j++) {
-		for (int i = 0; i < src.cols; i++) {
-			dst.at<uchar>(j, i) = src.at<uchar>(j, i) + 100;
-		}
-	}
-
-	imshow("src", src);
-	imshow("dst", dst);
-	waitKey();
-
-	destroyAllWindows();
-}
-
-void brightness3()
-{
-	Mat src = imread("lenna.bmp", IMREAD_GRAYSCALE);
-
-	if (src.empty()) {
-		cerr << "Image load failed!" << endl;
-		return;
-	}
-
-	Mat dst(src.rows, src.cols, src.type());
-
-	for (int j = 0; j < src.rows; j++) {
-		for (int i = 0; i < src.cols; i++) {
-			dst.at<uchar>(j, i) = saturate_cast<uchar>(src.at<uchar>(j, i) + 100);
-		}
-	}
-
-	imshow("src", src);
-	imshow("dst", dst);
-	waitKey();
-
-	destroyAllWindows();
-}
-
-void brightness4()
-{
-	Mat src = imread("lenna.bmp", IMREAD_GRAYSCALE);
-
-	if (src.empty()) {
-		cerr << "Image load failed!" << endl;
-		return;
-	}
-
-	namedWindow("dst");
-	createTrackbar("Brightness", "dst", 0, 100, on_brightness, (void*)&src);
-	on_brightness(0, (void*)&src);
-
-	waitKey();
-	destroyAllWindows();
-}
-
-void on_brightness(int pos, void* userdata)
-{
-	Mat src = *(Mat*)userdata;
-	Mat dst = src + pos;
-
-	imshow("dst", dst);
-}
+cap.release();
+destroyAllWindows();
