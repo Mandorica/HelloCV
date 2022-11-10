@@ -1,98 +1,50 @@
-#include <iostream>
 #include <opencv2/opencv.hpp>
-#include "HelperFunctions.h"
+#include <iostream>
 
+using namespace cv;
+using namespace std;
 
-int main() {
-    std::string image_path = "images/road_image";
-    std::string input_format = ".jpg";
-    std::string full_image_path = image_path + input_format;
+int main(int ac, char** av) {
 
-    bool show_jpg_image = false;
-    bool show_all_images = false;
-    bool show_all_histograms = false;
-    bool save_images_and_histograms = false;
-    bool measure_only_step_4 = false;
-    int measures = 1000;
+    Mat img_1 = imread("images/sample_image.jpg", 0);    //이미지를 grayscale로 불러옴
 
-    cv::Mat converted_image;
-    std::vector<std::string> color_space_strings = { "RGB", "HSV", "YUV", "YCrCb", "Lab", "Luv", "XYZ", "GS" };
-    std::vector<cv::ColorConversionCodes> image_formats = { cv::COLOR_RGB2RGBA, cv::COLOR_RGB2HSV, cv::COLOR_RGB2YUV, cv::COLOR_RGB2YCrCb, cv::COLOR_RGB2Lab, cv::COLOR_RGB2Luv, cv::COLOR_RGB2XYZ, cv::COLOR_RGB2GRAY };
-    std::vector<int>channels = { 0,                 2,                 0,                   0,                 0,                 0,                 1,                  0 };
-    //                               width,    height,      x0,        y0
-    //                         ROI:   1100,       200,     310,        600
-    //               Effective FOV:   1400,       900,     210,        10
-    std::vector<int> roi_arguments = { 1100,       200,     310,        600 };
-    // Step 1 - read image
-    cv::Mat image;
-    if (".jpg" == input_format) {
-        ReadRawImage(image, full_image_path, show_jpg_image);
+    Mat img_2 = img_1 * 2;
+    Mat img_3 = img_1 / 2;
+    Mat img_hist;
+
+    MatND histogram;
+
+    const int* channel_numbers = { 0 };
+    float channel_range[] = { 0.0, 255.0 };
+    const float* channel_ranges = channel_range;
+    int number_bins = 255;
+
+    calcHist(&img_1, 1, channel_numbers, Mat(), histogram, 1, &number_bins, &channel_ranges);
+
+    // plot the histogram
+    int hist_w = img_1.cols;
+    int hist_h = img_1.rows;
+    int bin_w = cvRound((double)hist_w / number_bins);
+
+    Mat hist_img(hist_h, hist_w, CV_8UC1, Scalar::all(0));
+    normalize(histogram, histogram, 0, hist_img.rows, NORM_MINMAX, -1, Mat());
+
+    for (int i = 1; i < number_bins; i++)
+    {
+        line(hist_img, Point(bin_w * (i - 1), hist_h - cvRound(histogram.at<float>(i - 1))), Point(bin_w * (i), hist_h - cvRound(histogram.at<float>(i))), Scalar(255, 0, 0), 1, 8, 0);
     }
-    else {
-        image = cv::imread(full_image_path, cv::IMREAD_UNCHANGED);
-    }
-    double tmp_brightness = 0.0;
 
-    std::vector<double> brightness_sum_list = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
-    std::vector<double> duration_sum_ms_list = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+    imshow("Origianl", img_1);
+    imshow("Histogram", hist_img);
+    cout << "밝기평균 : " << (int)mean(img_1)[0] << endl;
 
-    for (int i = 0; i < measures; i++) {
-        if (i % 10 == 0) {
-            std::cout << "Progress: " << i << std::endl;
-        }
-        int j = 0;
-        for (auto& image_format : image_formats) {
-            if (measure_only_step_4) {
-                // Step 2 - copy image
-                image.copyTo(converted_image);
-                if (cv::COLOR_RGB2RGBA == image_format) {
-                    // RGB is NOT converted to RGBA. This is just used to be able to make a distinction for the RGB image in this test
-                }
-                else {
-                    // Step 3 - convert image
-                    ConvertImage(converted_image, image_format);
-                }
-                // Step 4 - calculate mean brightness of image
-                auto start_timestamp_ms = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-                CalculateMeanBrightness(converted_image, image_format, channels.at(j), roi_arguments, tmp_brightness);
-                auto end_timestamp_ms = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-                brightness_sum_list.at(j) += tmp_brightness;
-                duration_sum_ms_list.at(j) += static_cast<double>(end_timestamp_ms - start_timestamp_ms) / 1000000.0;
-                tmp_brightness = 0.0;
+    //imshow("original", img_1);
+    //imshow("img_mul", img_2);
+    //imshow("img_div", img_3);
 
-                if (save_images_and_histograms) {
-                    SaveHistogram(converted_image, image_format, channels.at(j), color_space_strings.at(j) + "_histogram", show_all_histograms);
-                    SaveImage(converted_image, image_format, channels.at(j), roi_arguments, color_space_strings.at(j) + "_image", show_all_images);
-                }
-            }
-            else {
-                auto start_timestamp_ms = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-                // Step 2 - copy image
-                image.copyTo(converted_image);
-                if (cv::COLOR_RGB2RGBA == image_format) {
-                    // RGB is NOT converted to RGBA. This is just used to be able to make a distinction for the RGB image in this test
-                }
-                else {
-                    // Step 3 - convert image
-                    ConvertImage(converted_image, image_format);
-                }
-                // Step 4 - calculate mean brightness of image
-                CalculateMeanBrightness(converted_image, image_format, channels.at(j), roi_arguments, tmp_brightness);
-                auto end_timestamp_ms = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    waitKey(0);
 
-                brightness_sum_list.at(j) += tmp_brightness;
-                duration_sum_ms_list.at(j) += static_cast<double>(end_timestamp_ms - start_timestamp_ms) / 1000000.0;
-                tmp_brightness = 0.0;
 
-                if (save_images_and_histograms) {
-                    SaveHistogram(converted_image, image_format, channels.at(j), color_space_strings.at(j) + "_histogram", show_all_histograms);
-                    SaveImage(converted_image, image_format, channels.at(j), roi_arguments, color_space_strings.at(j) + "_image", show_all_images);
-                }
-            }
-            j++;
-        }
-    }
-    PrintResults(brightness_sum_list, duration_sum_ms_list, measures);
     return 0;
 }
