@@ -12,6 +12,15 @@ int main(int ac, char** av) {
     Mat img_3 = img_1 / 2;
     Mat img_hist;
 
+    img = cv2.imread('./img/sunset.jpg')
+
+        x = 320; y = 150; w = 50; h = 50        # roi 좌표
+        roi = img[y:y + h, x : x + w]         # roi 지정-- - ①
+
+        print(roi.shape)                # roi shape, (50, 50, 3)
+        cv2.rectangle(roi, (0, 0), (h - 1, w - 1), (0, 255, 0)) # roi 전체에 사각형 그리기-- - ②
+        cv2.imshow("img", img)
+
     MatND histogram;
 
     const int* channel_numbers = { 0 };
@@ -36,7 +45,7 @@ int main(int ac, char** av) {
 
     imshow("Origianl", img_1);
     imshow("Histogram", hist_img);
-    cout << "밝기평균 : " << (int)mean(img_1)[0] << endl;
+    cout << "밝기평균 : " << (int)mean(img_1)[0] << endl; // 밝기 측정 코드
 
 
     //imshow("original", img_1);
