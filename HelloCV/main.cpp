@@ -12,16 +12,8 @@ int main(int ac, char** av) {
     Mat img_3 = img_1 / 2;
     Mat img_hist;
 
-    img = cv2.imread('./img/sunset.jpg')
-
-        x = 320; y = 150; w = 50; h = 50        # roi 좌표
-        roi = img[y:y + h, x : x + w]         # roi 지정-- - ①
-
-        print(roi.shape)                # roi shape, (50, 50, 3)
-        cv2.rectangle(roi, (0, 0), (h - 1, w - 1), (0, 255, 0)) # roi 전체에 사각형 그리기-- - ②
-        cv2.imshow("img", img)
-
-    MatND histogram;
+    // convert RGB image to gray
+    cv::cvtColor(frame, gray, CV_RGB2GRAY);
 
     const int* channel_numbers = { 0 };
     float channel_range[] = { 0.0, 255.0 };
